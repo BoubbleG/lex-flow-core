@@ -55,9 +55,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <DropdownMenuItem onClick={() => navigate({ to: "/configuracoes" })}>
                   <UserIcon className="h-4 w-4 mr-2" /> Configurações
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleSignOut}>
-                  <LogOut className="h-4 w-4 mr-2" /> Sair
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </header>
