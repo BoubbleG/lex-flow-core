@@ -39,15 +39,13 @@ function CaseDetail() {
     mutationFn: async () => {
       if (!data?.case.cnj_number) throw new Error("Sem número CNJ para consultar.");
       const r = await consultar({ data: { cnjNumber: data.case.cnj_number, caseId: id } });
-      const { data: u } = await supabase.auth.getUser();
-      const { data: profile } = await supabase
-        .from("users_profile").select("organization_id").eq("user_id", u.user!.id).single();
+      const { DEV_ORG_ID } = await import("@/lib/dev-auth");
       const existing = new Set((data.movements ?? []).map((m) => `${m.movement_date}|${m.description}`));
       const newOnes = r.movements.filter((m) => !existing.has(`${m.movement_date}|${m.description}`));
       if (newOnes.length > 0) {
         await supabase.from("case_movements").insert(
           newOnes.map((m) => ({
-            organization_id: profile!.organization_id,
+            organization_id: DEV_ORG_ID,
             case_id: id,
             movement_date: m.movement_date,
             description: m.description,

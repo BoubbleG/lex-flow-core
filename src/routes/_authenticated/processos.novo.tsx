@@ -53,14 +53,11 @@ function NewCase() {
 
   const saveMut = useMutation({
     mutationFn: async () => {
-      const { data: u } = await supabase.auth.getUser();
-      const { data: profile } = await supabase
-        .from("users_profile").select("organization_id").eq("user_id", u.user!.id).single();
-
+      const { DEV_ORG_ID } = await import("@/lib/dev-auth");
       const { data: created, error } = await supabase
         .from("cases")
         .insert({
-          organization_id: profile!.organization_id,
+          organization_id: DEV_ORG_ID,
           cnj_number: form.cnj_number || null,
           title: form.title || null,
           client_id: form.client_id || null,
@@ -73,7 +70,7 @@ function NewCase() {
           distribution_date: cnjData?.distribution_date ?? null,
           notes: form.notes || null,
           last_cnj_sync_at: cnjData ? new Date().toISOString() : null,
-          responsible_user_id: u.user!.id,
+          responsible_user_id: null,
         })
         .select("id").single();
       if (error) throw error;
@@ -81,7 +78,7 @@ function NewCase() {
       if (cnjData && cnjData.movements.length > 0) {
         await supabase.from("case_movements").insert(
           cnjData.movements.map((m) => ({
-            organization_id: profile!.organization_id,
+            organization_id: DEV_ORG_ID,
             case_id: created!.id,
             movement_date: m.movement_date,
             description: m.description,
