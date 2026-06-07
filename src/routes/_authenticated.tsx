@@ -1,24 +1,10 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 
+// TODO: reativar auth antes de produção.
+// Modo dev: gate de autenticação desativado.
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
-  beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
-
-    const { data: profile } = await supabase
-      .from("users_profile")
-      .select("onboarding_completed")
-      .eq("user_id", data.user.id)
-      .maybeSingle();
-
-    if (profile && !profile.onboarding_completed) {
-      throw redirect({ to: "/onboarding" });
-    }
-    return { user: data.user };
-  },
   component: () => (
     <AppShell>
       <Outlet />

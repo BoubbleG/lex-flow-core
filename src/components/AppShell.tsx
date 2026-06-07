@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { LogOut, Search, User as UserIcon, Info } from "lucide-react";
+import { Search, User as UserIcon, Info } from "lucide-react";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { Input } from "@/components/ui/input";
@@ -9,40 +9,19 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { supabase } from "@/integrations/supabase/client";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { DEV_ORG_NAME, DEV_USER_NAME } from "@/lib/dev-auth";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [dismissed, setDismissed] = useState(false);
 
-  const { data: profile } = useQuery({
-    queryKey: ["me"],
-    queryFn: async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) return null;
-      const { data } = await supabase
-        .from("users_profile")
-        .select("name, email, oab_number, oab_state, organizations(name)")
-        .eq("user_id", u.user.id)
-        .maybeSingle();
-      return data;
-    },
-  });
+  // Modo dev: perfil mock (sem login).
+  const profile = { name: DEV_USER_NAME };
+  const orgName = DEV_ORG_NAME;
 
   useEffect(() => {
     setDismissed(typeof window !== "undefined" && sessionStorage.getItem("jf-disclaimer") === "1");
   }, []);
-
-  async function handleSignOut() {
-    await queryClient.cancelQueries();
-    queryClient.clear();
-    await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
-  }
-
-  const orgName = (profile as { organizations?: { name?: string } } | null | undefined)?.organizations?.name;
 
   return (
     <SidebarProvider>
@@ -75,9 +54,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate({ to: "/configuracoes" })}>
                   <UserIcon className="h-4 w-4 mr-2" /> Configurações
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleSignOut}>
-                  <LogOut className="h-4 w-4 mr-2" /> Sair
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

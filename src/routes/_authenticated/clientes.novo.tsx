@@ -27,12 +27,10 @@ function NewClient() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { data: u } = await supabase.auth.getUser();
-    const { data: profile } = await supabase
-      .from("users_profile").select("organization_id").eq("user_id", u.user!.id).single();
+    const { DEV_ORG_ID } = await import("@/lib/dev-auth");
     const { data, error } = await supabase
       .from("clients")
-      .insert({ ...form, organization_id: profile!.organization_id })
+      .insert({ ...form, organization_id: DEV_ORG_ID })
       .select("id").single();
     setLoading(false);
     if (error) return toast.error(error.message);

@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+// requireSupabaseAuth removido no modo dev — TODO: reativar antes de produção.
 import { normalizeCNJ, parseCNJ, getDataJudAlias, getTribunalLabel } from "./cnj";
 
 /**
@@ -124,7 +124,6 @@ async function queryDataJud(cnjNumber: string, alias: string): Promise<CNJResult
 }
 
 export const consultarProcessoCNJ = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((input: { cnjNumber: string; caseId?: string }) =>
     z
       .object({
@@ -133,7 +132,7 @@ export const consultarProcessoCNJ = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data }) => {
     const clean = normalizeCNJ(data.cnjNumber);
     const seg = parseCNJ(clean);
     if (!seg) {
@@ -161,19 +160,13 @@ export const consultarProcessoCNJ = createServerFn({ method: "POST" })
       logError = "Tribunal não suportado pela API pública — usando dados simulados.";
     }
 
-    const { supabase, userId } = context;
-    const { data: profile } = await supabase
-      .from("users_profile")
-      .select("organization_id")
-      .eq("user_id", userId)
-      .maybeSingle();
-    const orgId = profile?.organization_id;
-    if (!orgId) throw new Error("Perfil/organização não encontrados.");
-
-    await supabase.from("cnj_query_logs").insert({
-      organization_id: orgId,
+    // Modo dev: log usando a organização demo.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const DEV_ORG_ID = "00000000-0000-0000-0000-0000000000a1";
+    await supabaseAdmin.from("cnj_query_logs").insert({
+      organization_id: DEV_ORG_ID,
       case_id: data.caseId ?? null,
-      user_id: userId,
+      user_id: null,
       cnj_number: formatted,
       status: logStatus,
       source: result.source,
