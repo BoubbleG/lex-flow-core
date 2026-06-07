@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+// requireSupabaseAuth removido no modo dev — TODO: reativar antes de produção.
 import { normalizeCNJ, parseCNJ, getDataJudAlias, getTribunalLabel } from "./cnj";
 
 /**
