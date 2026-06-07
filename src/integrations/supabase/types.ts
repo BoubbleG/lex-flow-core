@@ -14,16 +14,450 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      case_movements: {
+        Row: {
+          case_id: string
+          created_at: string
+          description: string
+          external_id: string | null
+          id: string
+          is_new: boolean
+          movement_date: string
+          organization_id: string
+          source: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          description: string
+          external_id?: string | null
+          id?: string
+          is_new?: boolean
+          movement_date: string
+          organization_id: string
+          source?: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          description?: string
+          external_id?: string | null
+          id?: string
+          is_new?: boolean
+          movement_date?: string
+          organization_id?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_movements_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_movements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cases: {
+        Row: {
+          case_class: string | null
+          claim_value: number | null
+          client_id: string | null
+          cnj_number: string | null
+          court: string | null
+          created_at: string
+          distribution_date: string | null
+          id: string
+          judicial_body: string | null
+          last_cnj_sync_at: string | null
+          notes: string | null
+          opposing_party: string | null
+          organization_id: string
+          responsible_user_id: string | null
+          status: Database["public"]["Enums"]["case_status"]
+          subject: string | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          case_class?: string | null
+          claim_value?: number | null
+          client_id?: string | null
+          cnj_number?: string | null
+          court?: string | null
+          created_at?: string
+          distribution_date?: string | null
+          id?: string
+          judicial_body?: string | null
+          last_cnj_sync_at?: string | null
+          notes?: string | null
+          opposing_party?: string | null
+          organization_id: string
+          responsible_user_id?: string | null
+          status?: Database["public"]["Enums"]["case_status"]
+          subject?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          case_class?: string | null
+          claim_value?: number | null
+          client_id?: string | null
+          cnj_number?: string | null
+          court?: string | null
+          created_at?: string
+          distribution_date?: string | null
+          id?: string
+          judicial_body?: string | null
+          last_cnj_sync_at?: string | null
+          notes?: string | null
+          opposing_party?: string | null
+          organization_id?: string
+          responsible_user_id?: string | null
+          status?: Database["public"]["Enums"]["case_status"]
+          subject?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cases_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cases_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          address: string | null
+          created_at: string
+          document: string | null
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          organization_id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          document?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          organization_id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          document?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          organization_id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cnj_query_logs: {
+        Row: {
+          case_id: string | null
+          cnj_number: string
+          created_at: string
+          error_message: string | null
+          id: string
+          organization_id: string
+          response_summary: string | null
+          source: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          case_id?: string | null
+          cnj_number: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          organization_id: string
+          response_summary?: string | null
+          source?: string
+          status: string
+          user_id?: string | null
+        }
+        Update: {
+          case_id?: string | null
+          cnj_number?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          organization_id?: string
+          response_summary?: string | null
+          source?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cnj_query_logs_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cnj_query_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          case_id: string | null
+          client_id: string | null
+          created_at: string
+          file_name: string
+          file_type: string | null
+          file_url: string
+          id: string
+          organization_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          case_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          file_name: string
+          file_type?: string | null
+          file_url: string
+          id?: string
+          organization_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          case_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          file_name?: string
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          organization_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "documents_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          document: string | null
+          id: string
+          name: string
+          plan: string
+        }
+        Insert: {
+          created_at?: string
+          document?: string | null
+          id?: string
+          name: string
+          plan?: string
+        }
+        Update: {
+          created_at?: string
+          document?: string | null
+          id?: string
+          name?: string
+          plan?: string
+        }
+        Relationships: []
+      }
+      tasks: {
+        Row: {
+          case_id: string | null
+          client_id: string | null
+          created_at: string
+          description: string | null
+          due_date: string | null
+          id: string
+          organization_id: string
+          priority: Database["public"]["Enums"]["task_priority"]
+          responsible_user_id: string | null
+          status: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          case_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          organization_id: string
+          priority?: Database["public"]["Enums"]["task_priority"]
+          responsible_user_id?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          case_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          organization_id?: string
+          priority?: Database["public"]["Enums"]["task_priority"]
+          responsible_user_id?: string | null
+          status?: Database["public"]["Enums"]["task_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users_profile: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string | null
+          oab_number: string | null
+          oab_state: string | null
+          onboarding_completed: boolean
+          organization_id: string
+          practice_area: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          oab_number?: string | null
+          oab_state?: string | null
+          onboarding_completed?: boolean
+          organization_id: string
+          practice_area?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+          oab_number?: string | null
+          oab_state?: string | null
+          onboarding_completed?: boolean
+          organization_id?: string
+          practice_area?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_profile_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_org: { Args: { _user_id: string }; Returns: string }
     }
     Enums: {
-      [_ in never]: never
+      case_status: "ativo" | "arquivado" | "suspenso" | "encerrado"
+      task_priority: "baixa" | "media" | "alta"
+      task_status: "pendente" | "em_andamento" | "concluida" | "atrasada"
+      user_role: "owner" | "admin" | "member"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +584,11 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      case_status: ["ativo", "arquivado", "suspenso", "encerrado"],
+      task_priority: ["baixa", "media", "alta"],
+      task_status: ["pendente", "em_andamento", "concluida", "atrasada"],
+      user_role: ["owner", "admin", "member"],
+    },
   },
 } as const
