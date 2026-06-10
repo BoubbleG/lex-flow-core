@@ -1,112 +1,75 @@
-# Implementação completa do DataJud (CNJ)
 
-Hoje a integração já consulta a API pública do DataJud, salva movimentações novas e tem fallback mock. Este plano cobre os 4 eixos pedidos: **dados completos**, **consulta em lote**, **sincronização automática periódica** e **notificações de novidades**.
+## Diagnóstico — o que já testei agora
 
-## 1. Dados completos do processo
+| Item | Status | Observação |
+|---|---|---|
+| API DataJud online | ✅ | HTTP 200 em TJRS/TRF4/TRT4 com a chave pública padrão |
+| Consulta por **número CNJ** | ✅ | Processo real 5067960-22.2025.8.21.0010 retornou classe, tribunal, órgão julgador e 57 movimentos |
+| Sync automático (cron 6h) | ✅ | pg_cron + pg_net já agendados, endpoint `/api/public/hooks/cnj-sync` operacional |
+| Notificações em tempo real | ✅ | Tabela `notifications` na publication `supabase_realtime` |
+| Consulta em lote | ✅ | `consultarProcessosLote` com concorrência 3 + retry |
+| **Busca por OAB** | ❌ | **Impossível na API pública** — ver abaixo |
+| Aba "Partes & Advogados" com dados reais | ❌ | Sempre vazia quando `source=datajud` |
 
-Expandir `consultarProcessoCNJ` em `src/lib/cnj.functions.ts` para retornar e persistir:
+## Por que não dá pra buscar por OAB na API pública
 
-- **Partes** (polo ativo / polo passivo) com nome, tipo de pessoa e papel
-- **Advogados** vinculados (nome + OAB)
-- **Valor da causa**, **órgão julgador**, **classe**, **assuntos** (já parcialmente capturados)
-- **Grau** (1º/2º), **nível de sigilo**, **formato** (eletrônico/físico)
-- **Movimentos** com complementos (já temos descrição/data, adicionar código e complementos)
-
-Schema novo:
-
-```text
-case_parties      (id, organization_id, case_id, role, name, document, person_type)
-case_lawyers      (id, organization_id, case_id, name, oab, party_id)
-```
-
-Em `cases`, popular automaticamente após sync: `case_class`, `subject`, `judicial_body`, `claim_value`, `distribution_date`, `court`.
-
-UI: nova aba "Partes & Advogados" em `processos/$id.tsx` ao lado de "Movimentações".
-
-## 2. Consulta em lote
-
-Novo server fn `consultarProcessosLote({ caseIds })` em `cnj.functions.ts`:
-
-- Itera com **concorrência 3** (evitar throttling do DataJud)
-- Reutiliza a lógica de `consultarProcessoCNJ` por processo
-- Retorna sumário `{ total, success, updated, novosMovimentos, falhas[] }`
-
-UI em `processos.index.tsx`:
-
-- Checkbox por linha + "selecionar todos"
-- Botão "Atualizar selecionados" → chama o lote com toast de progresso
-- Botão "Atualizar todos os ativos"
-
-## 3. Sincronização automática periódica
-
-**Backend (cron):**
-
-- Nova rota pública `src/routes/api/public/hooks/cnj-sync.ts` (POST)
-  - Autentica via header `apikey` (anon key — padrão do projeto)
-  - Lê do banco todos os `cases` com `status='ativo'` e (`last_cnj_sync_at` nulo OU < now()-12h)
-  - Limita a 50 processos por execução (evita rajada)
-  - Reaproveita `consultarProcessoCNJ`
-- Cron via `pg_cron` + `pg_net` a cada 6h:
-
-```sql
-select cron.schedule(
-  'cnj-auto-sync', '0 */6 * * *',
-  $$ select net.http_post(
-    url:='https://project--163bed13-893e-4a42-86f9-055c430ed1b6.lovable.app/api/public/hooks/cnj-sync',
-    headers:='{"Content-Type":"application/json","apikey":"<anon>"}'::jsonb,
-    body:='{}'::jsonb) $$);
-```
-
-**UI:** badge "Auto-sync ativo" + última execução em `configuracoes.tsx`, com toggle para pausar (flag em `organizations.settings`).
-
-## 4. Notificações de novidades
-
-Schema:
+Inspecionei o `_source` dos documentos do índice DataJud. Os campos disponíveis são apenas:
 
 ```text
-notifications (id, organization_id, user_id NULL, case_id, type, title, body,
-               read_at NULL, created_at)
+numeroProcesso, classe, sistema, formato, tribunal, grau,
+dataAjuizamento, movimentos, orgaoJulgador, assuntos, nivelSigilo
 ```
 
-- Gerar notificação para cada batch de movimentos novos detectados (em `consultarProcessoCNJ` quando `newOnes.length > 0`)
-- Tipo: `nova_movimentacao` com link para o processo
-- UI:
-  - Sino no header do `AppShell` com badge de não-lidas (count via React Query)
-  - Popover lista as 10 mais recentes; clique navega ao processo e marca como lida
-  - Página `/notificacoes` com histórico completo
-- Realtime: `ALTER PUBLICATION supabase_realtime ADD TABLE notifications` + subscribe no `AppShell` para incrementar badge ao vivo
+Não existe `partes` nem `advogados` no schema indexado. Testei 4 variações do campo (`numeroOAB`, `numero_oab`, `.keyword`, numérico) em 3 tribunais — todas retornaram `total: 0`. O CNJ deliberadamente não expõe dados pessoais na API pública (LGPD).
 
-## 5. Robustez da integração
+**Conclusão:** com a OAB/RS 084457 não é possível listar processos via DataJud. É uma limitação do CNJ, não do nosso código.
 
-- Backoff exponencial (3 tentativas) em `queryDataJud` para 429/5xx
-- Timeout configurável já existe (`CNJ_API_TIMEOUT`)
-- `cnj_query_logs` ganha coluna `duration_ms` para diagnóstico
-- Mantém fallback mock (conforme escolhido)
-- Badge "fonte: DataJud" vs "fonte: simulado" mais visível na UI de processo
+## Caminho para habilitar busca por OAB
 
-## Arquivos a criar / alterar
+A única forma é integrar com um **provedor pago** que faz raspagem/agregação dos sistemas de tribunais e expõe consulta por OAB. Opções principais no mercado BR:
 
-**Migrações** (uma única):
-- Criar `case_parties`, `case_lawyers`, `notifications`
-- Adicionar `duration_ms` em `cnj_query_logs`
-- Habilitar `pg_cron` + `pg_net`, agendar `cnj-auto-sync`
-- Adicionar `notifications` na publication `supabase_realtime`
-- GRANTs + RLS (incluindo policy `dev anon` consistente com o modo dev atual)
+| Provedor | Consulta por OAB | Preço aproximado | Observação |
+|---|---|---|---|
+| **Escavador API** | ✅ | a partir de ~R$ 200/mês | API REST estável, retorna partes e movimentações |
+| **Judit.io** | ✅ | sob consulta, plano por volume | Foco em monitoramento automático |
+| **Codilo** | ✅ | ~R$ 300/mês | Bem documentada |
+| **Jusbrasil API** | ✅ | corporativo, sob consulta | Mais cara, dados mais ricos |
 
-**Backend:**
-- `src/lib/cnj.functions.ts` — expandir parser DataJud, persistir partes/advogados, gerar notificações, novo `consultarProcessosLote`
-- `src/routes/api/public/hooks/cnj-sync.ts` — endpoint do cron
+Recomendo **Escavador** como ponto de partida (custo-benefício e docs abertas: `https://api.escavador.com/docs/`).
 
-**Frontend:**
-- `src/routes/_authenticated/processos.$id.tsx` — aba Partes & Advogados, badge da fonte
-- `src/routes/_authenticated/processos.index.tsx` — seleção múltipla + ações em lote
-- `src/routes/_authenticated/configuracoes.tsx` — toggle auto-sync + última execução
-- `src/components/AppShell.tsx` — sino de notificações
-- `src/routes/_authenticated/notificacoes.tsx` — página de histórico
-- `src/components/NotificationsBell.tsx` — popover + realtime
+## Plano de implementação (após escolha do provedor)
 
-## Fora do escopo (perguntar depois se quiser)
+### 1. Setup do provedor (você faz)
+- Criar conta no provedor escolhido
+- Pegar o API token
+- Me passar o token via secret (`ESCAVADOR_API_KEY` ou similar)
 
-- Envio de notificação por **email** (precisaria connector tipo Resend)
-- Exportação de movimentações em PDF
-- Histórico/diff visual de alterações em campos do processo
+### 2. Schema do banco (1 migration)
+- Tabela `oab_watches` — OABs monitoradas pelo escritório (uf, numero, lawyer_name, organization_id)
+- Coluna `cases.discovered_via` — `manual | oab_search | sync`
+- Coluna `cases.source_provider` — `datajud | escavador | mock`
+
+### 3. Server functions (`src/lib/oab.functions.ts`)
+- `buscarProcessosPorOAB({ uf, numero })` — chama o provedor, retorna lista de CNJs encontrados
+- `importarProcessosPorOAB({ uf, numero, autoImport })` — busca + cria cases novos (skip duplicados), liga ao escritório
+- `cadastrarOAB({ uf, numero, lawyerName })` — adiciona OAB ao monitoramento periódico
+
+### 4. UI nova
+- Em **Configurações** → seção "Minhas OABs monitoradas" (adicionar/remover)
+- Em **Processos** → botão "Importar pela minha OAB" (modal com seletor de OAB + preview da lista)
+- Indicador na lista de processos: badge "Descoberto via OAB"
+
+### 5. Sync periódico estendido
+- Estender o cron existente para também varrer cada `oab_watch` ativa
+- Notificar quando aparecem **processos novos** vinculados à OAB (não só novas movimentações)
+
+### 6. Fallback de partes/advogados
+- Quando o provedor retornar partes/advogados, preencher `case_parties` e `case_lawyers` (a aba "Partes & Advogados" passa a mostrar dados reais — hoje só funciona em mock)
+
+## O que decidir antes de implementar
+
+1. **Qual provedor?** (Escavador, Judit, Codilo, Jusbrasil, ou outro)
+2. **Importação automática ou manual?** Quando aparecer processo novo na sua OAB, ele deve entrar automaticamente no sistema ou ficar numa "caixa de entrada" pra você aprovar?
+3. **Quantas OABs por escritório?** Apenas a sua, ou várias (sócios/associados)?
+
+Enquanto isso o sistema atual funciona 100% para o fluxo: **cadastrar processo pelo número CNJ → sync automático traz movimentações reais do DataJud → notificações em tempo real**.
