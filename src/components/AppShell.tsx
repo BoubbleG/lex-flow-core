@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DEV_ORG_NAME, DEV_USER_NAME } from "@/lib/dev-auth";
+import { NotificationsBell } from "./NotificationsBell";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -37,6 +38,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 className="pl-9 h-9 bg-muted/40 border-transparent focus-visible:bg-background"
               />
             </div>
+            <NotificationsBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-2">

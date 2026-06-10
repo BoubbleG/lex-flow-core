@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, RefreshCw, Trash2, CircleDot } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, RefreshCw, Trash2, CircleDot, Users2, Scale } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -24,43 +25,36 @@ function CaseDetail() {
   const { data, isLoading } = useQuery({
     queryKey: ["case", id],
     queryFn: async () => {
-      const [c, m] = await Promise.all([
+      const [c, m, p, l] = await Promise.all([
         supabase.from("cases").select("*, clients(id, name)").eq("id", id).single(),
         supabase.from("case_movements").select("*").eq("case_id", id).order("movement_date", { ascending: false }),
+        supabase.from("case_parties").select("*").eq("case_id", id).order("role"),
+        supabase.from("case_lawyers").select("*").eq("case_id", id),
       ]);
       if (c.error) throw c.error;
-      // Marca como vistas
       await supabase.from("case_movements").update({ is_new: false }).eq("case_id", id).eq("is_new", true);
-      return { case: c.data, movements: m.data ?? [] };
+      return {
+        case: c.data,
+        movements: m.data ?? [],
+        parties: p.data ?? [],
+        lawyers: l.data ?? [],
+      };
     },
   });
 
   const refreshMut = useMutation({
     mutationFn: async () => {
       if (!data?.case.cnj_number) throw new Error("Sem número CNJ para consultar.");
-      const r = await consultar({ data: { cnjNumber: data.case.cnj_number, caseId: id } });
-      const { DEV_ORG_ID } = await import("@/lib/dev-auth");
-      const existing = new Set((data.movements ?? []).map((m) => `${m.movement_date}|${m.description}`));
-      const newOnes = r.movements.filter((m) => !existing.has(`${m.movement_date}|${m.description}`));
-      if (newOnes.length > 0) {
-        await supabase.from("case_movements").insert(
-          newOnes.map((m) => ({
-            organization_id: DEV_ORG_ID,
-            case_id: id,
-            movement_date: m.movement_date,
-            description: m.description,
-            source: r.source,
-            external_id: m.external_id ?? null,
-            is_new: true,
-          })),
-        );
-      }
-      await supabase.from("cases").update({ last_cnj_sync_at: new Date().toISOString() }).eq("id", id);
-      return { added: newOnes.length, source: r.source };
+      return consultar({ data: { cnjNumber: data.case.cnj_number, caseId: id } });
     },
     onSuccess: (r) => {
-      toast.success(r.added > 0 ? `${r.added} nova(s) movimentação(ões).` : "Sem novas movimentações.");
+      toast.success(
+        r.source === "datajud"
+          ? "Atualizado com dados do DataJud."
+          : "Sem dados oficiais — usando dados simulados.",
+      );
       queryClient.invalidateQueries({ queryKey: ["case", id] });
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -76,6 +70,13 @@ function CaseDetail() {
   if (isLoading) return <div className="text-sm text-muted-foreground">Carregando…</div>;
   const c = data!.case;
   const client = (c as { clients?: { id: string; name: string } | null }).clients;
+  const lawyersByParty = (data!.lawyers as Array<{ id: string; party_id: string | null; name: string; oab: string | null }>)
+    .reduce<Record<string, Array<{ id: string; name: string; oab: string | null }>>>((acc, l) => {
+      const k = l.party_id ?? "_none";
+      (acc[k] ||= []).push(l);
+      return acc;
+    }, {});
+  const hasRealData = (data!.movements as Array<{ source: string }>).some((m) => m.source === "datajud");
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
@@ -86,7 +87,21 @@ function CaseDetail() {
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-2">
           <div>
-            <CardTitle className="font-mono text-base">{c.cnj_number ?? "Sem número CNJ"}</CardTitle>
+            <div className="flex items-center gap-2 flex-wrap">
+              <CardTitle className="font-mono text-base">{c.cnj_number ?? "Sem número CNJ"}</CardTitle>
+              {c.cnj_number && (
+                <Badge
+                  variant="outline"
+                  className={
+                    hasRealData
+                      ? "bg-success/15 text-success border-success/30 text-[10px]"
+                      : "bg-warning/15 text-warning border-warning/30 text-[10px]"
+                  }
+                >
+                  {hasRealData ? "Fonte: DataJud" : "Fonte: simulado"}
+                </Badge>
+              )}
+            </div>
             {c.title && <p className="text-sm text-muted-foreground mt-1">{c.title}</p>}
           </div>
           <div className="flex gap-2">
@@ -121,36 +136,97 @@ function CaseDetail() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader><CardTitle className="text-base">Movimentações</CardTitle></CardHeader>
-        <CardContent>
-          {data!.movements.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nenhuma movimentação registrada. {c.cnj_number && "Clique em \"Atualizar\" para buscar no CNJ."}
-            </p>
-          ) : (
-            <ol className="relative border-l border-border ml-2 space-y-4">
-              {data!.movements.map((m) => (
-                <li key={m.id} className="ml-4">
-                  <span className="absolute -left-[7px] mt-1.5 flex">
-                    <CircleDot className={`h-3.5 w-3.5 ${m.is_new ? "text-warning" : "text-muted-foreground"}`} />
-                  </span>
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-sm font-medium">{m.description}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(m.movement_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                        {m.source !== "manual" && ` · ${m.source}`}
-                      </p>
-                    </div>
-                    {m.is_new && <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-[10px]">NOVO</Badge>}
-                  </div>
-                </li>
-              ))}
-            </ol>
-          )}
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="movimentos">
+        <TabsList>
+          <TabsTrigger value="movimentos">Movimentações ({data!.movements.length})</TabsTrigger>
+          <TabsTrigger value="partes">Partes & Advogados ({data!.parties.length})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="movimentos">
+          <Card>
+            <CardContent className="pt-6">
+              {data!.movements.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma movimentação registrada. {c.cnj_number && "Clique em \"Atualizar\" para buscar no CNJ."}
+                </p>
+              ) : (
+                <ol className="relative border-l border-border ml-2 space-y-4">
+                  {data!.movements.map((m) => (
+                    <li key={m.id} className="ml-4">
+                      <span className="absolute -left-[7px] mt-1.5 flex">
+                        <CircleDot className={`h-3.5 w-3.5 ${m.is_new ? "text-warning" : "text-muted-foreground"}`} />
+                      </span>
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-medium">{m.description}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(new Date(m.movement_date), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                            {m.source !== "manual" && ` · ${m.source}`}
+                          </p>
+                        </div>
+                        {m.is_new && <Badge variant="outline" className="bg-warning/15 text-warning border-warning/30 text-[10px]">NOVO</Badge>}
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="partes">
+          <Card>
+            <CardContent className="pt-6">
+              {data!.parties.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma parte cadastrada. {c.cnj_number && "Clique em \"Atualizar\" para buscar no CNJ."}
+                </p>
+              ) : (
+                <ul className="space-y-4">
+                  {(data!.parties as Array<{
+                    id: string; role: string; name: string; document: string | null; person_type: string | null;
+                  }>).map((p) => {
+                    const advs = lawyersByParty[p.id] ?? [];
+                    const roleLabel =
+                      p.role === "ativo" ? "Polo ativo" :
+                      p.role === "passivo" ? "Polo passivo" : "Outro";
+                    return (
+                      <li key={p.id} className="border rounded-md p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start gap-2">
+                            <Users2 className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">{p.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {p.person_type === "fisica" ? "Pessoa física" :
+                                 p.person_type === "juridica" ? "Pessoa jurídica" : "—"}
+                                {p.document && ` · ${p.document}`}
+                              </p>
+                            </div>
+                          </div>
+                          <Badge variant="outline" className="text-[10px]">{roleLabel}</Badge>
+                        </div>
+                        {advs.length > 0 && (
+                          <div className="mt-3 pt-3 border-t space-y-1">
+                            <p className="text-[11px] uppercase text-muted-foreground tracking-wide">Advogados</p>
+                            {advs.map((a) => (
+                              <div key={a.id} className="flex items-center gap-2 text-sm">
+                                <Scale className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span>{a.name}</span>
+                                {a.oab && <span className="text-xs text-muted-foreground">· {a.oab}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

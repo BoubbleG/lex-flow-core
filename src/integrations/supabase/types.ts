@@ -14,6 +14,58 @@ export type Database = {
   }
   public: {
     Tables: {
+      case_lawyers: {
+        Row: {
+          case_id: string
+          created_at: string
+          id: string
+          name: string
+          oab: string | null
+          organization_id: string
+          party_id: string | null
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          id?: string
+          name: string
+          oab?: string | null
+          organization_id: string
+          party_id?: string | null
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          oab?: string | null
+          organization_id?: string
+          party_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_lawyers_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_lawyers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_lawyers_party_id_fkey"
+            columns: ["party_id"]
+            isOneToOne: false
+            referencedRelation: "case_parties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       case_movements: {
         Row: {
           case_id: string
@@ -58,6 +110,54 @@ export type Database = {
           },
           {
             foreignKeyName: "case_movements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      case_parties: {
+        Row: {
+          case_id: string
+          created_at: string
+          document: string | null
+          id: string
+          name: string
+          organization_id: string
+          person_type: string | null
+          role: string
+        }
+        Insert: {
+          case_id: string
+          created_at?: string
+          document?: string | null
+          id?: string
+          name: string
+          organization_id: string
+          person_type?: string | null
+          role: string
+        }
+        Update: {
+          case_id?: string
+          created_at?: string
+          document?: string | null
+          id?: string
+          name?: string
+          organization_id?: string
+          person_type?: string | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "case_parties_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "case_parties_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -195,6 +295,7 @@ export type Database = {
           case_id: string | null
           cnj_number: string
           created_at: string
+          duration_ms: number | null
           error_message: string | null
           id: string
           organization_id: string
@@ -207,6 +308,7 @@ export type Database = {
           case_id?: string | null
           cnj_number: string
           created_at?: string
+          duration_ms?: number | null
           error_message?: string | null
           id?: string
           organization_id: string
@@ -219,6 +321,7 @@ export type Database = {
           case_id?: string | null
           cnj_number?: string
           created_at?: string
+          duration_ms?: number | null
           error_message?: string | null
           id?: string
           organization_id?: string
@@ -302,25 +405,82 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string | null
+          case_id: string | null
+          created_at: string
+          id: string
+          organization_id: string
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          body?: string | null
+          case_id?: string | null
+          created_at?: string
+          id?: string
+          organization_id: string
+          read_at?: string | null
+          title: string
+          type?: string
+          user_id?: string | null
+        }
+        Update: {
+          body?: string | null
+          case_id?: string | null
+          created_at?: string
+          id?: string
+          organization_id?: string
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
+          auto_sync_enabled: boolean
           created_at: string
           document: string | null
           id: string
+          last_auto_sync_at: string | null
           name: string
           plan: string
         }
         Insert: {
+          auto_sync_enabled?: boolean
           created_at?: string
           document?: string | null
           id?: string
+          last_auto_sync_at?: string | null
           name: string
           plan?: string
         }
         Update: {
+          auto_sync_enabled?: boolean
           created_at?: string
           document?: string | null
           id?: string
+          last_auto_sync_at?: string | null
           name?: string
           plan?: string
         }

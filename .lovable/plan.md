@@ -1,36 +1,112 @@
-## Objetivo
-Permitir acessar o app sem precisar fazer login, temporariamente, enquanto você desenvolve/testa.
+# Implementação completa do DataJud (CNJ)
 
-## Abordagem
-Criar um modo "dev bypass" que injeta uma sessão fake e desativa o gate de autenticação, sem remover o código de auth (para reativar facilmente depois).
+Hoje a integração já consulta a API pública do DataJud, salva movimentações novas e tem fallback mock. Este plano cobre os 4 eixos pedidos: **dados completos**, **consulta em lote**, **sincronização automática periódica** e **notificações de novidades**.
 
-### Mudanças
+## 1. Dados completos do processo
 
-1. **`src/routes/_authenticated/route.tsx`** (gate de auth)
-   - Comentar o `beforeLoad` que chama `supabase.auth.getUser()` e redireciona para `/auth`.
-   - Manter o `AppShell` + `<Outlet />` para que as rotas filhas continuem renderizando.
-   - Adicionar comentário `// TODO: reativar auth antes de produção`.
+Expandir `consultarProcessoCNJ` em `src/lib/cnj.functions.ts` para retornar e persistir:
 
-2. **`src/routes/index.tsx`** (home redirect)
-   - Trocar o redirect condicional por redirect direto para `/dashboard`.
+- **Partes** (polo ativo / polo passivo) com nome, tipo de pessoa e papel
+- **Advogados** vinculados (nome + OAB)
+- **Valor da causa**, **órgão julgador**, **classe**, **assuntos** (já parcialmente capturados)
+- **Grau** (1º/2º), **nível de sigilo**, **formato** (eletrônico/físico)
+- **Movimentos** com complementos (já temos descrição/data, adicionar código e complementos)
 
-3. **Organização/perfil mock para queries**
-   - As páginas (clientes, processos, dashboard) usam `get_user_org(auth.uid())` via RLS, então sem usuário logado as queries retornam vazio.
-   - Solução: criar uma seed SQL com 1 organização demo + 1 user_profile demo vinculados a um UUID fixo (ex: `00000000-0000-0000-0000-000000000001`), e expor esse UUID via um helper `getCurrentUserId()` em `src/lib/auth-dev.ts` que todas as páginas usam.
-   - Como RLS exige `auth.uid()` real, a alternativa mais simples é: **desativar RLS temporariamente** nas tabelas do app OU usar `supabaseAdmin` via server functions para ler/escrever.
+Schema novo:
 
-### Recomendação
-Vou pelo caminho mais simples e reversível:
-- Desativar o gate de auth no layout `_authenticated`.
-- Criar org + perfil demo seed.
-- Criar server functions com `supabaseAdmin` para CRUD durante o modo dev, usando o UUID fixo como `organization_id`.
+```text
+case_parties      (id, organization_id, case_id, role, name, document, person_type)
+case_lawyers      (id, organization_id, case_id, name, oab, party_id)
+```
 
-## Aviso
-Esse modo é **só para desenvolvimento**. Antes de publicar:
-- Reativar o `beforeLoad` no `_authenticated/route.tsx`.
-- Remover seeds demo.
-- Voltar a usar `requireSupabaseAuth` nas server functions.
+Em `cases`, popular automaticamente após sync: `case_class`, `subject`, `judicial_body`, `claim_value`, `distribution_date`, `court`.
 
-## Perguntas
-1. Confirma que é só para testar agora (vamos reverter antes de publicar)?
-2. Quer que eu já popule a org demo com alguns clientes/processos de exemplo para ver o dashboard com dados?
+UI: nova aba "Partes & Advogados" em `processos/$id.tsx` ao lado de "Movimentações".
+
+## 2. Consulta em lote
+
+Novo server fn `consultarProcessosLote({ caseIds })` em `cnj.functions.ts`:
+
+- Itera com **concorrência 3** (evitar throttling do DataJud)
+- Reutiliza a lógica de `consultarProcessoCNJ` por processo
+- Retorna sumário `{ total, success, updated, novosMovimentos, falhas[] }`
+
+UI em `processos.index.tsx`:
+
+- Checkbox por linha + "selecionar todos"
+- Botão "Atualizar selecionados" → chama o lote com toast de progresso
+- Botão "Atualizar todos os ativos"
+
+## 3. Sincronização automática periódica
+
+**Backend (cron):**
+
+- Nova rota pública `src/routes/api/public/hooks/cnj-sync.ts` (POST)
+  - Autentica via header `apikey` (anon key — padrão do projeto)
+  - Lê do banco todos os `cases` com `status='ativo'` e (`last_cnj_sync_at` nulo OU < now()-12h)
+  - Limita a 50 processos por execução (evita rajada)
+  - Reaproveita `consultarProcessoCNJ`
+- Cron via `pg_cron` + `pg_net` a cada 6h:
+
+```sql
+select cron.schedule(
+  'cnj-auto-sync', '0 */6 * * *',
+  $$ select net.http_post(
+    url:='https://project--163bed13-893e-4a42-86f9-055c430ed1b6.lovable.app/api/public/hooks/cnj-sync',
+    headers:='{"Content-Type":"application/json","apikey":"<anon>"}'::jsonb,
+    body:='{}'::jsonb) $$);
+```
+
+**UI:** badge "Auto-sync ativo" + última execução em `configuracoes.tsx`, com toggle para pausar (flag em `organizations.settings`).
+
+## 4. Notificações de novidades
+
+Schema:
+
+```text
+notifications (id, organization_id, user_id NULL, case_id, type, title, body,
+               read_at NULL, created_at)
+```
+
+- Gerar notificação para cada batch de movimentos novos detectados (em `consultarProcessoCNJ` quando `newOnes.length > 0`)
+- Tipo: `nova_movimentacao` com link para o processo
+- UI:
+  - Sino no header do `AppShell` com badge de não-lidas (count via React Query)
+  - Popover lista as 10 mais recentes; clique navega ao processo e marca como lida
+  - Página `/notificacoes` com histórico completo
+- Realtime: `ALTER PUBLICATION supabase_realtime ADD TABLE notifications` + subscribe no `AppShell` para incrementar badge ao vivo
+
+## 5. Robustez da integração
+
+- Backoff exponencial (3 tentativas) em `queryDataJud` para 429/5xx
+- Timeout configurável já existe (`CNJ_API_TIMEOUT`)
+- `cnj_query_logs` ganha coluna `duration_ms` para diagnóstico
+- Mantém fallback mock (conforme escolhido)
+- Badge "fonte: DataJud" vs "fonte: simulado" mais visível na UI de processo
+
+## Arquivos a criar / alterar
+
+**Migrações** (uma única):
+- Criar `case_parties`, `case_lawyers`, `notifications`
+- Adicionar `duration_ms` em `cnj_query_logs`
+- Habilitar `pg_cron` + `pg_net`, agendar `cnj-auto-sync`
+- Adicionar `notifications` na publication `supabase_realtime`
+- GRANTs + RLS (incluindo policy `dev anon` consistente com o modo dev atual)
+
+**Backend:**
+- `src/lib/cnj.functions.ts` — expandir parser DataJud, persistir partes/advogados, gerar notificações, novo `consultarProcessosLote`
+- `src/routes/api/public/hooks/cnj-sync.ts` — endpoint do cron
+
+**Frontend:**
+- `src/routes/_authenticated/processos.$id.tsx` — aba Partes & Advogados, badge da fonte
+- `src/routes/_authenticated/processos.index.tsx` — seleção múltipla + ações em lote
+- `src/routes/_authenticated/configuracoes.tsx` — toggle auto-sync + última execução
+- `src/components/AppShell.tsx` — sino de notificações
+- `src/routes/_authenticated/notificacoes.tsx` — página de histórico
+- `src/components/NotificationsBell.tsx` — popover + realtime
+
+## Fora do escopo (perguntar depois se quiser)
+
+- Envio de notificação por **email** (precisaria connector tipo Resend)
+- Exportação de movimentações em PDF
+- Histórico/diff visual de alterações em campos do processo

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedPrazosRouteImport } from './routes/_authenticated/prazos'
+import { Route as AuthenticatedNotificacoesRouteImport } from './routes/_authenticated/notificacoes'
 import { Route as AuthenticatedDocumentosRouteImport } from './routes/_authenticated/documentos'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedConfiguracoesRouteImport } from './routes/_authenticated/configuracoes'
@@ -21,6 +22,7 @@ import { Route as AuthenticatedProcessosNovoRouteImport } from './routes/_authen
 import { Route as AuthenticatedProcessosIdRouteImport } from './routes/_authenticated/processos.$id'
 import { Route as AuthenticatedClientesNovoRouteImport } from './routes/_authenticated/clientes.novo'
 import { Route as AuthenticatedClientesIdRouteImport } from './routes/_authenticated/clientes.$id'
+import { Route as ApiPublicHooksCnjSyncRouteImport } from './routes/api/public/hooks/cnj-sync'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -36,6 +38,12 @@ const AuthenticatedPrazosRoute = AuthenticatedPrazosRouteImport.update({
   path: '/prazos',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthenticatedNotificacoesRoute =
+  AuthenticatedNotificacoesRouteImport.update({
+    id: '/notificacoes',
+    path: '/notificacoes',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedDocumentosRoute = AuthenticatedDocumentosRouteImport.update({
   id: '/documentos',
   path: '/documentos',
@@ -87,12 +95,18 @@ const AuthenticatedClientesIdRoute = AuthenticatedClientesIdRouteImport.update({
   path: '/clientes/$id',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const ApiPublicHooksCnjSyncRoute = ApiPublicHooksCnjSyncRouteImport.update({
+  id: '/api/public/hooks/cnj-sync',
+  path: '/api/public/hooks/cnj-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/documentos': typeof AuthenticatedDocumentosRoute
+  '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/prazos': typeof AuthenticatedPrazosRoute
   '/clientes/$id': typeof AuthenticatedClientesIdRoute
   '/clientes/novo': typeof AuthenticatedClientesNovoRoute
@@ -100,12 +114,14 @@ export interface FileRoutesByFullPath {
   '/processos/novo': typeof AuthenticatedProcessosNovoRoute
   '/clientes/': typeof AuthenticatedClientesIndexRoute
   '/processos/': typeof AuthenticatedProcessosIndexRoute
+  '/api/public/hooks/cnj-sync': typeof ApiPublicHooksCnjSyncRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/documentos': typeof AuthenticatedDocumentosRoute
+  '/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/prazos': typeof AuthenticatedPrazosRoute
   '/clientes/$id': typeof AuthenticatedClientesIdRoute
   '/clientes/novo': typeof AuthenticatedClientesNovoRoute
@@ -113,6 +129,7 @@ export interface FileRoutesByTo {
   '/processos/novo': typeof AuthenticatedProcessosNovoRoute
   '/clientes': typeof AuthenticatedClientesIndexRoute
   '/processos': typeof AuthenticatedProcessosIndexRoute
+  '/api/public/hooks/cnj-sync': typeof ApiPublicHooksCnjSyncRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -121,6 +138,7 @@ export interface FileRoutesById {
   '/_authenticated/configuracoes': typeof AuthenticatedConfiguracoesRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/documentos': typeof AuthenticatedDocumentosRoute
+  '/_authenticated/notificacoes': typeof AuthenticatedNotificacoesRoute
   '/_authenticated/prazos': typeof AuthenticatedPrazosRoute
   '/_authenticated/clientes/$id': typeof AuthenticatedClientesIdRoute
   '/_authenticated/clientes/novo': typeof AuthenticatedClientesNovoRoute
@@ -128,6 +146,7 @@ export interface FileRoutesById {
   '/_authenticated/processos/novo': typeof AuthenticatedProcessosNovoRoute
   '/_authenticated/clientes/': typeof AuthenticatedClientesIndexRoute
   '/_authenticated/processos/': typeof AuthenticatedProcessosIndexRoute
+  '/api/public/hooks/cnj-sync': typeof ApiPublicHooksCnjSyncRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -136,6 +155,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/dashboard'
     | '/documentos'
+    | '/notificacoes'
     | '/prazos'
     | '/clientes/$id'
     | '/clientes/novo'
@@ -143,12 +163,14 @@ export interface FileRouteTypes {
     | '/processos/novo'
     | '/clientes/'
     | '/processos/'
+    | '/api/public/hooks/cnj-sync'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/configuracoes'
     | '/dashboard'
     | '/documentos'
+    | '/notificacoes'
     | '/prazos'
     | '/clientes/$id'
     | '/clientes/novo'
@@ -156,6 +178,7 @@ export interface FileRouteTypes {
     | '/processos/novo'
     | '/clientes'
     | '/processos'
+    | '/api/public/hooks/cnj-sync'
   id:
     | '__root__'
     | '/'
@@ -163,6 +186,7 @@ export interface FileRouteTypes {
     | '/_authenticated/configuracoes'
     | '/_authenticated/dashboard'
     | '/_authenticated/documentos'
+    | '/_authenticated/notificacoes'
     | '/_authenticated/prazos'
     | '/_authenticated/clientes/$id'
     | '/_authenticated/clientes/novo'
@@ -170,11 +194,13 @@ export interface FileRouteTypes {
     | '/_authenticated/processos/novo'
     | '/_authenticated/clientes/'
     | '/_authenticated/processos/'
+    | '/api/public/hooks/cnj-sync'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  ApiPublicHooksCnjSyncRoute: typeof ApiPublicHooksCnjSyncRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -198,6 +224,13 @@ declare module '@tanstack/react-router' {
       path: '/prazos'
       fullPath: '/prazos'
       preLoaderRoute: typeof AuthenticatedPrazosRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/notificacoes': {
+      id: '/_authenticated/notificacoes'
+      path: '/notificacoes'
+      fullPath: '/notificacoes'
+      preLoaderRoute: typeof AuthenticatedNotificacoesRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/documentos': {
@@ -263,6 +296,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientesIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/api/public/hooks/cnj-sync': {
+      id: '/api/public/hooks/cnj-sync'
+      path: '/api/public/hooks/cnj-sync'
+      fullPath: '/api/public/hooks/cnj-sync'
+      preLoaderRoute: typeof ApiPublicHooksCnjSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -270,6 +310,7 @@ interface AuthenticatedRouteChildren {
   AuthenticatedConfiguracoesRoute: typeof AuthenticatedConfiguracoesRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDocumentosRoute: typeof AuthenticatedDocumentosRoute
+  AuthenticatedNotificacoesRoute: typeof AuthenticatedNotificacoesRoute
   AuthenticatedPrazosRoute: typeof AuthenticatedPrazosRoute
   AuthenticatedClientesIdRoute: typeof AuthenticatedClientesIdRoute
   AuthenticatedClientesNovoRoute: typeof AuthenticatedClientesNovoRoute
@@ -283,6 +324,7 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedConfiguracoesRoute: AuthenticatedConfiguracoesRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDocumentosRoute: AuthenticatedDocumentosRoute,
+  AuthenticatedNotificacoesRoute: AuthenticatedNotificacoesRoute,
   AuthenticatedPrazosRoute: AuthenticatedPrazosRoute,
   AuthenticatedClientesIdRoute: AuthenticatedClientesIdRoute,
   AuthenticatedClientesNovoRoute: AuthenticatedClientesNovoRoute,
@@ -299,6 +341,7 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  ApiPublicHooksCnjSyncRoute: ApiPublicHooksCnjSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
