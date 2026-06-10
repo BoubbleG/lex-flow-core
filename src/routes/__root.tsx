@@ -85,6 +85,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "Acompanhe processos, clientes, prazos e movimentações em uma plataforma jurídica enxuta para advogados e pequenos escritórios.",
       },
+      { property: "og:title", content: "JusFlow — Gestão jurídica simples" },
+      { name: "twitter:title", content: "JusFlow — Gestão jurídica simples" },
+      { name: "description", content: "Legal Compass is a SaaS platform for legal professionals to manage clients, cases, deadlines, and tasks." },
+      { property: "og:description", content: "Legal Compass is a SaaS platform for legal professionals to manage clients, cases, deadlines, and tasks." },
+      { name: "twitter:description", content: "Legal Compass is a SaaS platform for legal professionals to manage clients, cases, deadlines, and tasks." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/69f4f9a0-990f-41dc-915e-2ffffdc47056/id-preview-6b793f60--163bed13-893e-4a42-86f9-055c430ed1b6.lovable.app-1781052278752.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/69f4f9a0-990f-41dc-915e-2ffffdc47056/id-preview-6b793f60--163bed13-893e-4a42-86f9-055c430ed1b6.lovable.app-1781052278752.png" },
+      { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:type", content: "website" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
