@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Users, Briefcase, Calendar, FileText, Settings, Scale } from "lucide-react";
+import { LayoutDashboard, Users, Briefcase, Calendar, FileText, Settings, Scale, Bell } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu,
   SidebarMenuButton, SidebarMenuItem, SidebarHeader, useSidebar,
@@ -11,6 +11,7 @@ const items = [
   { title: "Processos", url: "/processos", icon: Briefcase },
   { title: "Prazos & Tarefas", url: "/prazos", icon: Calendar },
   { title: "Documentos", url: "/documentos", icon: FileText },
+  { title: "Notificações", url: "/notificacoes", icon: Bell },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 
