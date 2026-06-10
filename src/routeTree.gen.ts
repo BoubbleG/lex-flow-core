@@ -21,6 +21,7 @@ import { Route as AuthenticatedProcessosNovoRouteImport } from './routes/_authen
 import { Route as AuthenticatedProcessosIdRouteImport } from './routes/_authenticated/processos.$id'
 import { Route as AuthenticatedClientesNovoRouteImport } from './routes/_authenticated/clientes.novo'
 import { Route as AuthenticatedClientesIdRouteImport } from './routes/_authenticated/clientes.$id'
+import { Route as ApiPublicHooksCnjSyncRouteImport } from './routes/api/public/hooks/cnj-sync'
 
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
@@ -87,6 +88,11 @@ const AuthenticatedClientesIdRoute = AuthenticatedClientesIdRouteImport.update({
   path: '/clientes/$id',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const ApiPublicHooksCnjSyncRoute = ApiPublicHooksCnjSyncRouteImport.update({
+  id: '/api/public/hooks/cnj-sync',
+  path: '/api/public/hooks/cnj-sync',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/processos/novo': typeof AuthenticatedProcessosNovoRoute
   '/clientes/': typeof AuthenticatedClientesIndexRoute
   '/processos/': typeof AuthenticatedProcessosIndexRoute
+  '/api/public/hooks/cnj-sync': typeof ApiPublicHooksCnjSyncRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -113,6 +120,7 @@ export interface FileRoutesByTo {
   '/processos/novo': typeof AuthenticatedProcessosNovoRoute
   '/clientes': typeof AuthenticatedClientesIndexRoute
   '/processos': typeof AuthenticatedProcessosIndexRoute
+  '/api/public/hooks/cnj-sync': typeof ApiPublicHooksCnjSyncRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -128,6 +136,7 @@ export interface FileRoutesById {
   '/_authenticated/processos/novo': typeof AuthenticatedProcessosNovoRoute
   '/_authenticated/clientes/': typeof AuthenticatedClientesIndexRoute
   '/_authenticated/processos/': typeof AuthenticatedProcessosIndexRoute
+  '/api/public/hooks/cnj-sync': typeof ApiPublicHooksCnjSyncRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/processos/novo'
     | '/clientes/'
     | '/processos/'
+    | '/api/public/hooks/cnj-sync'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -156,6 +166,7 @@ export interface FileRouteTypes {
     | '/processos/novo'
     | '/clientes'
     | '/processos'
+    | '/api/public/hooks/cnj-sync'
   id:
     | '__root__'
     | '/'
@@ -170,11 +181,13 @@ export interface FileRouteTypes {
     | '/_authenticated/processos/novo'
     | '/_authenticated/clientes/'
     | '/_authenticated/processos/'
+    | '/api/public/hooks/cnj-sync'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
+  ApiPublicHooksCnjSyncRoute: typeof ApiPublicHooksCnjSyncRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -263,6 +276,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientesIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/api/public/hooks/cnj-sync': {
+      id: '/api/public/hooks/cnj-sync'
+      path: '/api/public/hooks/cnj-sync'
+      fullPath: '/api/public/hooks/cnj-sync'
+      preLoaderRoute: typeof ApiPublicHooksCnjSyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -299,7 +319,18 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
+  ApiPublicHooksCnjSyncRoute: ApiPublicHooksCnjSyncRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
