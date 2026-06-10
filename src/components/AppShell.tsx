@@ -38,6 +38,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 className="pl-9 h-9 bg-muted/40 border-transparent focus-visible:bg-background"
               />
             </div>
+            <NotificationsBell />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="gap-2">
